@@ -1,7 +1,7 @@
-/* Service worker: keeps a copy of the app's own files on the phone so it opens offline.
-   It only ever caches these files (the code). Your expenses live in IndexedDB and are never sent anywhere. */
-const VERSION = 'expenses-v1.0.1';           // bump this when you upload a new version
-const FILES = ['./', './index.html', './manifest.json', './icon.png'];
+/* Service worker: keeps a copy of the Hub's own files on the phone so it opens offline.
+   It only ever caches these files (the code). Your data lives in IndexedDB and is never sent anywhere. */
+const VERSION = 'hub-v2.0.0';           // bump this whenever you upload new files
+const FILES = ['./', './index.html', './styles.css', './core.js', './finance.js', './notes.js', './hub.js', './manifest.json', './icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
