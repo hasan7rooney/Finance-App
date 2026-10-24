@@ -4,6 +4,7 @@
    ===================================================================== */
 
 /* ---------------- Defaults ---------------- */
+const WORK_SUBS = ['Team food', 'Subscriptions & tools', 'Team activities', 'Work transport', 'Office supplies', 'Courses & learning', 'Client & gifts'];
 const DEFAULT_CATS = [
   ['Food', '🍽️', 'c2', ['Groceries', 'Restaurants', 'Coffee & snacks', 'Delivery']],
   ['Transport', '🚗', 'c1', ['Fuel', 'Taxi', 'Car maintenance']],
@@ -13,6 +14,7 @@ const DEFAULT_CATS = [
   ['Health', '💊', 'c6', ['Pharmacy', 'Doctor']],
   ['Entertainment', '🎮', 'c7', ['Outings', 'Subscriptions', 'Games']],
   ['Family & gifts', '🎁', 'c8', ['Gifts', 'Family support']],
+  ['Work', '💼', 'c7', WORK_SUBS],
   ['Other', '📦', 'gray', []],
 ];
 const makeDefaultCats = () => DEFAULT_CATS.map(([name, icon, color, subs], i) => ({
@@ -504,11 +506,12 @@ function expRow(e) {
   const amt = full ? `<s class="muted">${fmtNum(e.amount)}</s>` : part ? `<s class="was">${fmtNum(e.amount)}</s>${fmtNum(net(e))}` : fmtNum(e.amount);
   const badge = full ? `<span class="badge refund">↩ Refunded</span>` : part ? `<span class="badge refund">↩ −${compact(refundOf(e))}</span>`
     : `<span class="badge ${e.method}">${e.method === 'cash' ? '💵 Cash' : '💳 Online'}</span>`;
-  return `<button class="exp ${full ? 'is-refunded' : ''}" data-edit="${e.id}" style="--c:${col(c)}">
+  const q = isRefunded(e) ? '<span></span>' : `<button class="qrefund" data-qrefund="${e.id}" aria-label="Full refund">↩</button>`;
+  return `<div class="exp hq ${full ? 'is-refunded' : ''}" data-edit="${e.id}" role="button" tabindex="0" style="--c:${col(c)}">
     <span class="cat-ico">${esc(c?.icon || '❔')}</span>
     <span style="min-width:0"><div class="exp-t ellip">${esc(c?.name || 'Unknown')}${s ? ` <span class="muted">›</span> ${esc(s.name)}` : ''}</div>
       ${e.note ? `<div class="exp-n ellip">${esc(e.note)}</div>` : ''}</span>
-    <span class="exp-a">${amt}<br>${badge}</span></button>`;
+    <span class="exp-a">${amt}<br>${badge}</span>${q}</div>`;
 }
 
 /* ---------------- Filters sheet ---------------- */
@@ -613,6 +616,14 @@ function openEdit(id) {
       }
     });
   });
+}
+/* One tap on ↩ in History = full refund (with Undo). Partial refunds: open the transaction → Refund. */
+async function quickRefund(id) {
+  const e = S.expenses.find(x => x.id === id); if (!e || isRefunded(e)) return;
+  const old = { refunded: e.refunded, refundedAt: e.refundedAt, refundNote: e.refundNote };
+  Object.assign(e, { refunded: e.amount, refundedAt: today(), refundNote: e.refundNote || '', updatedAt: new Date().toISOString() });
+  await putExpenses([e]); refresh();
+  toast(`↩ Refunded ${fmt(e.amount)} · ${catName(e.catId)}`, 'Undo', async () => { Object.assign(e, old); await putExpenses([e]); refresh(); });
 }
 function openRefund(e) {
   const c = catById(e.catId);
@@ -829,7 +840,8 @@ function bind() {
 
   // Global delegated actions
   document.addEventListener('click', e => {
-    const b = e.target.closest('[data-act],[data-drill],[data-edit],[data-editcat],[data-move]'); if (!b || b.closest('.sheet') || !b.closest('#app-finance')) return;
+    const b = e.target.closest('[data-qrefund],[data-act],[data-drill],[data-edit],[data-editcat],[data-move]'); if (!b || b.closest('.sheet') || !b.closest('#app-finance')) return;
+    if (b.dataset.qrefund) return quickRefund(b.dataset.qrefund);
     if (b.dataset.drill) { S.dash.drill = b.dataset.drill; renderDash(); $('#dash-body').scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
     if (b.dataset.edit) return openEdit(b.dataset.edit);
     if (b.dataset.editcat) return openCatEditor(b.dataset.editcat);
@@ -860,7 +872,16 @@ async function financeInit() {
   S.meta = (await kvGet('meta')) || {};
   if (S.meta.lastBackup && !HUB.meta.lastBackup) HUB.meta.lastBackup = S.meta.lastBackup; // v1 → v2
   S.cats = (await kvGet('categories')) || null;
-  if (!S.cats) { S.cats = makeDefaultCats(); await saveCats(); }
+  if (!S.cats) { S.cats = makeDefaultCats(); await saveCats(); S.meta.addedWork = true; saveMeta(); }
+  if (!S.meta.addedWork) { // v2.1: add the Work category once for existing users, just above "Other"
+    if (!S.cats.find(c => c.id === 'cat_work')) {
+      const other = S.cats.find(c => c.id === 'cat_other'); const at = other ? other.order : S.cats.length;
+      S.cats.forEach(c => { if (c.order >= at) c.order++; });
+      S.cats.push({ id: 'cat_work', name: 'Work', icon: '💼', color: 'c7', order: at, hidden: false, budget: 0, subs: WORK_SUBS.map(n => ({ id: 'sub_' + uid(), name: n, hidden: false })) });
+      await saveCats();
+    }
+    S.meta.addedWork = true; await saveMeta();
+  }
   S.expenses = await storeAll('expenses');
   S.add.catId = S.meta.lastCat || null;
   S.add.method = S.settings.defaultMethod === 'last' ? (S.meta.lastMethod || 'cash') : S.settings.defaultMethod;

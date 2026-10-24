@@ -151,11 +151,45 @@
 </nav>
 </div>
 
+<!-- ======================= WALLET ======================= -->
+<div class="app" id="app-wallet">
+<main id="w-main">
+  <section class="screen on" id="ws-home">
+    <div class="n-head">
+      <div><div class="hub-date">Wallet</div><h1 id="w-name">👛 Wallet</h1></div>
+      <button class="round-btn" data-wact="settings" aria-label="Wallet settings">⚙️</button>
+    </div>
+    <div class="chips" id="w-switch" hidden></div>
+    <div id="w-hero"></div>
+    <div class="w-actions">
+      <button class="w-btn in" data-wadd="in"><span>＋</span>In</button>
+      <button class="w-btn out" data-wadd="out"><span>－</span>Out</button>
+    </div>
+    <div id="w-chart"></div>
+    <div id="w-recent"></div>
+  </section>
+  <section class="screen" id="ws-log">
+    <h1>Log</h1>
+    <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input class="field" id="wl-q" placeholder="Search notes or amounts" type="search" autocomplete="off"></div>
+    <div class="seg full" id="wl-type" style="margin-bottom:8px"><button data-t="">All</button><button data-t="in">↓ In</button><button data-t="out">↑ Out</button></div>
+    <div class="chips" id="wl-range" style="margin-bottom:12px"><button class="chip" data-r="all">All time</button><button class="chip" data-r="week">This week</button><button class="chip" data-r="month">This month</button><button class="chip" data-r="lastmonth">Last month</button><button class="chip" data-r="year">This year</button></div>
+    <div id="wl-body"></div>
+  </section>
+</main>
+<nav class="tabs three" id="w-tabs">
+  <button data-tab="hub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>Hub</button>
+  <button data-tab="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3"/><rect x="4" y="8" width="16" height="11" rx="2.5"/><circle cx="16" cy="13.5" r="1.4" fill="currentColor"/></svg>Wallet</button>
+  <button data-tab="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 7h13M7 12h13M7 17h13"/><circle cx="3.5" cy="7" r="1" fill="currentColor"/><circle cx="3.5" cy="12" r="1" fill="currentColor"/><circle cx="3.5" cy="17" r="1" fill="currentColor"/></svg>Log</button>
+</nav>
+</div>
+
 <div class="toast" id="toast"></div>
 <input type="file" id="restore-file" accept=".json,application/json" hidden>
 <script src="core.js"></script>
 <script src="finance.js"></script>
 <script src="notes.js"></script>
+<script src="wallet.js"></script>
 <script src="hub.js"></script>
 </body>
 </html>

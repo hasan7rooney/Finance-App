@@ -4,20 +4,24 @@
    To add a new app later: add its tile in renderHub(), its markup in
    index.html, a new <app>.js file, and include it in doBackup/doRestore.
    ===================================================================== */
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 
 function greeting() { const h = new Date().getHours(); return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
 
+function lastWalletLine() {
+  const runs = withRunning(wal().id); const l = runs[runs.length - 1];
+  return l ? `Last ${l.e.type === 'in' ? '+' : '−'}${compact(l.e.amount)} · ${niceDate(l.e.date)}` : 'No entries yet';
+}
 function renderHub() {
   const now = new Date(); const t = today();
   $('#hub-date').textContent = `${WD_L[now.getDay()]}, ${now.getDate()} ${MONTHS_L[now.getMonth()]}`;
   $('#hub-hello').textContent = greeting();
 
   // backup reminder
-  const has = S.expenses.length + N.notes.length; const lb = HUB.meta.lastBackup;
+  const has = S.expenses.length + N.notes.length + W.entries.length; const lb = HUB.meta.lastBackup;
   const ago = lb ? daysBetween(ymd(new Date(lb)), t) : null;
   $('#hub-banner').innerHTML = has && (ago === null || ago > 7) ? `
-    <div class="banner"><span class="ico">⚠️</span><div class="grow"><b>${ago === null ? 'No backup yet' : `Last backup ${ago} days ago`}</b><div class="sub">One file saves Finance + Notes</div></div>
+    <div class="banner"><span class="ico">⚠️</span><div class="grow"><b>${ago === null ? 'No backup yet' : `Last backup ${ago} days ago`}</b><div class="sub">One file saves all your apps</div></div>
     <button class="btn small primary" data-hact="backup">Back up</button></div>` : '';
 
   // finance stats
@@ -41,13 +45,19 @@ function renderHub() {
       <span class="tile-big">${c.open}<small> open</small></span>
       <span class="tile-sub">${notesLine}</span>
     </button>
+    <button class="app-tile wallet" data-open-app="wallet">
+      <span class="tile-ico">${esc(wal()?.icon || '👛')}</span>
+      <span class="wt-mid"><span class="tile-name">${esc(wal()?.name || 'Wallet')}</span><span class="tile-sub">${wal() ? (W.wallets.length > 1 ? W.wallets.length + ' wallets' : lastWalletLine()) : 'Tap to set up'}</span></span>
+      <span class="tile-big ${wal() && balanceOf(wal().id) < 0 ? 'neg' : ''}">${wal() ? fmtNum(balanceOf(wal().id)) : '—'}${wal() && !cur().pre ? ' <small>' + esc(cur().sym) + '</small>' : ''}</span>
+    </button>
     <div class="app-tile soon"><span class="tile-ico">✨</span><span class="tile-name">More apps</span><span class="tile-sub">Your next idea goes here</span></div>`;
 
   // today panel: overdue + due today notes
   const due = openNotes().filter(n => n.due && n.due <= t).sort((a, b) => a.due.localeCompare(b.due));
   const quick = `<div class="quick-row">
       <button class="quick" data-hact="add-expense"><span>＋</span>Expense</button>
-      <button class="quick" data-hact="add-note"><span>＋</span>Note</button></div>`;
+      <button class="quick" data-hact="add-note"><span>＋</span>Note</button>
+      <button class="quick" data-hact="add-wallet"><span>±</span>Wallet</button></div>`;
   $('#hub-today').innerHTML = quick + `<div class="card hub-today">
     <div class="card-head"><h2>☀️ Today</h2><span class="sub">${due.length ? due.length + ' to do' : ''}</span></div>
     ${due.length ? `<div class="ncard flat">${due.slice(0, 5).map(noteRow).join('')}</div>${due.length > 5 ? `<button class="btn block small" data-open-app="notes" style="margin-top:8px">See all ${due.length}</button>` : ''}`
@@ -60,7 +70,7 @@ function renderHub() {
 function openHubSettings() {
   const lb = HUB.meta.lastBackup;
   const html = `<h3>⚙️ Hub settings</h3>
-    <div class="lock"><span class="ico">🔒</span><div><b>Private & offline</b><div class="sub" style="margin-top:2px">${S.expenses.length} expenses and ${N.notes.length} notes stored only on this device. The app is blocked from making any network request.${HUB.meta.persisted ? ' Storage is marked persistent.' : ''}</div></div></div>
+    <div class="lock"><span class="ico">🔒</span><div><b>Private & offline</b><div class="sub" style="margin-top:2px">${S.expenses.length} expenses, ${N.notes.length} notes and ${W.entries.length} wallet entries stored only on this device. The app is blocked from making any network request.${HUB.meta.persisted ? ' Storage is marked persistent.' : ''}</div></div></div>
     <label class="form-l">Appearance</label>
     <div class="seg full" id="hs-theme"><button data-th="system">Match iPhone</button><button data-th="light">☀️ Light</button><button data-th="dark">🌙 Dark</button></div>
     <label class="form-l">Backup</label>
@@ -89,6 +99,7 @@ async function doBackup() {
     hub: { settings: HUB.settings },
     finance: { settings: S.settings, categories: S.cats, expenses: S.expenses },
     notes: { tags: N.tags, notes: N.notes },
+    wallet: { wallets: W.wallets, entries: W.entries },
   };
   const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
   const ok = await shareOrDownload(blob, `hub-backup-${today()}.json`);
@@ -100,9 +111,9 @@ async function doRestore(file) {
   // v1 (Expenses) → same shape as v2
   if (data && data.app === 'expenses' && Array.isArray(data.expenses)) data = { app: 'hub', exportedAt: data.exportedAt, finance: { settings: data.settings, categories: data.categories, expenses: data.expenses } };
   if (!data || data.app !== 'hub') { toast('That file is not a Hub backup'); return; }
-  const fx = data.finance?.expenses || [], nx = data.notes?.notes || [];
+  const fx = data.finance?.expenses || [], nx = data.notes?.notes || [], wx = data.wallet?.entries || [];
   const when = data.exportedAt ? niceDate(ymd(new Date(data.exportedAt)), true) : 'unknown date';
-  const mode = await ask('Restore backup', `Backup from <b>${esc(when)}</b>: <b>${fx.length}</b> expenses, <b>${nx.length}</b> notes.<br><br><b>Merge</b> adds them to what's here. <b>Replace</b> wipes current data first.`,
+  const mode = await ask('Restore backup', `Backup from <b>${esc(when)}</b>: <b>${fx.length}</b> expenses, <b>${nx.length}</b> notes, <b>${wx.length}</b> wallet entries.<br><br><b>Merge</b> adds them to what's here. <b>Replace</b> wipes current data first.`,
     [{ label: 'Merge', value: 'merge', cls: 'primary' }, { label: 'Replace everything', value: 'replace', cls: 'danger' }]);
   if (!mode) return;
 
@@ -132,14 +143,26 @@ async function doRestore(file) {
     const map = new Map(N.notes.map(n => [n.id, n])); clean.forEach(n => map.set(n.id, n)); N.notes = [...map.values()];
     await saveTags();
   }
+  // wallet
+  if (data.wallet) {
+    const clean = wx.filter(e => e && e.id && e.walletId && Number.isFinite(e.amount) && (e.type === 'in' || e.type === 'out'));
+    if (mode === 'replace') { await storeClear('walletTx'); W.entries = []; W.wallets = data.wallet.wallets || []; }
+    else (data.wallet.wallets || []).forEach(w => { if (!W.wallets.find(x => x.id === w.id)) W.wallets.push(w); });
+    await putEntries(clean);
+    const map = new Map(W.entries.map(e => [e.id, e])); clean.forEach(e => map.set(e.id, e)); W.entries = [...map.values()];
+    if (!wal() && W.wallets.length) W.cur = W.wallets[0].id;
+    if (W.wallets.length && !W.wallets.find(w => w.id === W.cur)) W.cur = W.wallets[0].id;
+    await saveWallets();
+  }
   if (mode === 'replace' && data.hub?.settings) { HUB.settings = { ...HUB.settings, ...data.hub.settings }; await saveHub(); applyTheme(); }
-  toast(`✓ Restored ${fx.length} expenses, ${nx.length} notes`); refreshAll();
+  toast(`✓ Restored ${fx.length} expenses, ${nx.length} notes, ${wx.length} wallet entries`); refreshAll();
 }
 
 function refreshAll() {
   if (HUB.app === 'hub') renderHub();
   if (HUB.app === 'finance') refresh();
   if (HUB.app === 'notes') notesRefresh();
+  if (HUB.app === 'wallet') walletRefresh();
 }
 
 /* ---------------- Boot ---------------- */
@@ -154,6 +177,7 @@ async function boot() {
   applyTheme();
   await financeInit();
   await notesInit();
+  await walletInit();
   if (!HUB.meta.lastBackup && S.meta.lastBackup) { HUB.meta.lastBackup = S.meta.lastBackup; saveHubMeta(); }
 
   $('#app-hub').addEventListener('click', e => {
@@ -164,6 +188,7 @@ async function boot() {
     else if (b.dataset.hact === 'backup') doBackup();
     else if (b.dataset.hact === 'settings') openHubSettings();
     else if (b.dataset.hact === 'add-expense') openApp('finance');
+    else if (b.dataset.hact === 'add-wallet') { openApp('wallet'); if (W.wallets.length) setTimeout(() => openEntry('out'), 150); }
     else if (b.dataset.hact === 'add-note') { openApp('notes'); setTimeout(() => $('#n-text').focus(), 50); }
   });
   $('#restore-file').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) doRestore(f); });

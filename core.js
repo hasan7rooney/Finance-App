@@ -36,18 +36,19 @@ const COLORS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'gray'];
 
 /* ---------------- IndexedDB (one database for the whole Hub) ----------------
    The name stays "expenses-db" so data saved by the first version keeps working.
-   v1: expenses, kv      v2: + notes                                            */
+   v1: expenses, kv      v2: + notes      v3: + walletTx                                            */
 let db;
 const reqP = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
 const doneP = t => new Promise((res, rej) => { t.oncomplete = () => res(); t.onerror = t.onabort = () => rej(t.error); });
 function openDB() {
   return new Promise((res, rej) => {
-    const r = indexedDB.open('expenses-db', 2);
+    const r = indexedDB.open('expenses-db', 3);
     r.onupgradeneeded = () => {
       const d = r.result;
       if (!d.objectStoreNames.contains('expenses')) d.createObjectStore('expenses', { keyPath: 'id' }).createIndex('date', 'date');
       if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
       if (!d.objectStoreNames.contains('notes')) d.createObjectStore('notes', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('walletTx')) d.createObjectStore('walletTx', { keyPath: 'id' });
     };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
     r.onblocked = () => rej(new Error('Close other copies of the app and reopen'));
