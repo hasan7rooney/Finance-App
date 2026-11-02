@@ -4,13 +4,18 @@
    To add a new app later: add its tile in renderHub(), its markup in
    index.html, a new <app>.js file, and include it in doBackup/doRestore.
    ===================================================================== */
-const VERSION = '2.1.0';
+const VERSION = '2.2.0';
 
 function greeting() { const h = new Date().getHours(); return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
 
 function lastWalletLine() {
   const runs = withRunning(wal().id); const l = runs[runs.length - 1];
   return l ? `Last ${l.e.type === 'in' ? '+' : '−'}${compact(l.e.amount)} · ${niceDate(l.e.date)}` : 'No entries yet';
+}
+function gamesLine() {
+  const t = today(); const sd = gameData('sudoku'), wd = gameData('words');
+  const done = (sd.dailyDone === t ? 1 : 0) + (wd.daily && wd.daily.date === t && wd.daily.over ? 1 : 0);
+  return done === 2 ? 'Daily challenges done ✓' : `${2 - done} daily challenge${done === 1 ? '' : 's'} waiting · 8 games`;
 }
 function renderHub() {
   const now = new Date(); const t = today();
@@ -49,6 +54,11 @@ function renderHub() {
       <span class="tile-ico">${esc(wal()?.icon || '👛')}</span>
       <span class="wt-mid"><span class="tile-name">${esc(wal()?.name || 'Wallet')}</span><span class="tile-sub">${wal() ? (W.wallets.length > 1 ? W.wallets.length + ' wallets' : lastWalletLine()) : 'Tap to set up'}</span></span>
       <span class="tile-big ${wal() && balanceOf(wal().id) < 0 ? 'neg' : ''}">${wal() ? fmtNum(balanceOf(wal().id)) : '—'}${wal() && !cur().pre ? ' <small>' + esc(cur().sym) + '</small>' : ''}</span>
+    </button>
+    <button class="app-tile games" data-open-app="games">
+      <span class="tile-ico">🎮</span>
+      <span class="wt-mid"><span class="tile-name">Games</span><span class="tile-sub">${gamesLine()}</span></span>
+      <span class="g-tile-chips">${['🟧', '🧩', '🔢', '🔤'].map(e => `<i>${e}</i>`).join('')}</span>
     </button>
     <div class="app-tile soon"><span class="tile-ico">✨</span><span class="tile-name">More apps</span><span class="tile-sub">Your next idea goes here</span></div>`;
 
@@ -100,6 +110,7 @@ async function doBackup() {
     finance: { settings: S.settings, categories: S.cats, expenses: S.expenses },
     notes: { tags: N.tags, notes: N.notes },
     wallet: { wallets: W.wallets, entries: W.entries },
+    games: G.data,
   };
   const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
   const ok = await shareOrDownload(blob, `hub-backup-${today()}.json`);
@@ -154,6 +165,7 @@ async function doRestore(file) {
     if (W.wallets.length && !W.wallets.find(w => w.id === W.cur)) W.cur = W.wallets[0].id;
     await saveWallets();
   }
+  if (data.games && typeof data.games === 'object') { G.data = mode === 'replace' ? data.games : { ...data.games, ...G.data }; await kvSet('games', G.data); }
   if (mode === 'replace' && data.hub?.settings) { HUB.settings = { ...HUB.settings, ...data.hub.settings }; await saveHub(); applyTheme(); }
   toast(`✓ Restored ${fx.length} expenses, ${nx.length} notes, ${wx.length} wallet entries`); refreshAll();
 }
@@ -163,6 +175,7 @@ function refreshAll() {
   if (HUB.app === 'finance') refresh();
   if (HUB.app === 'notes') notesRefresh();
   if (HUB.app === 'wallet') walletRefresh();
+  if (HUB.app === 'games' && !G.open) renderShelf();
 }
 
 /* ---------------- Boot ---------------- */
@@ -178,6 +191,7 @@ async function boot() {
   await financeInit();
   await notesInit();
   await walletInit();
+  await gamesInit();
   if (!HUB.meta.lastBackup && S.meta.lastBackup) { HUB.meta.lastBackup = S.meta.lastBackup; saveHubMeta(); }
 
   $('#app-hub').addEventListener('click', e => {

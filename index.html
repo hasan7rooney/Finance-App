@@ -15,6 +15,7 @@
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="games.css">
 <title>Hub</title>
 </head>
 <body>
@@ -184,12 +185,47 @@
 </nav>
 </div>
 
+<!-- ======================= GAMES ======================= -->
+<div class="app" id="app-games">
+<main id="g-main">
+  <section class="screen on" id="gs-shelf">
+    <div class="n-head"><div><div class="hub-date">Games</div><h1>Play time 🎮</h1></div></div>
+    <div id="g-daily"></div>
+    <div class="g-shelf" id="g-shelf"></div>
+  </section>
+  <section class="screen" id="gs-stats">
+    <h1>Stats</h1>
+    <div id="g-stats"></div>
+  </section>
+</main>
+<div class="g-play" id="g-play">
+  <div class="g-playbar"><button class="g-back" id="g-back" aria-label="Back to games">‹</button><div class="g-title" id="g-title"></div><div class="g-bar" id="g-bar"></div></div>
+  <div class="g-board" id="g-board"></div>
+  <div class="g-over" id="g-over" hidden></div>
+</div>
+<nav class="tabs three" id="g-tabs">
+  <button data-tab="hub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>Hub</button>
+  <button data-tab="shelf" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9h12a4 4 0 0 1 4 4v1a3 3 0 0 1-5.4 1.8L15 14H9l-1.6 1.8A3 3 0 0 1 2 14v-1a4 4 0 0 1 4-4z"/><path d="M7 11.5v2M6 12.5h2"/><circle cx="16" cy="12" r=".8" fill="currentColor"/><circle cx="17.8" cy="13.4" r=".8" fill="currentColor"/></svg>Games</button>
+  <button data-tab="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>Stats</button>
+</nav>
+</div>
+
 <div class="toast" id="toast"></div>
 <input type="file" id="restore-file" accept=".json,application/json" hidden>
 <script src="core.js"></script>
 <script src="finance.js"></script>
 <script src="notes.js"></script>
 <script src="wallet.js"></script>
+<script src="games.js"></script>
+<script src="g-2048.js"></script>
+<script src="g-blocks.js"></script>
+<script src="g-sudoku.js"></script>
+<script src="g-mines.js"></script>
+<script src="g-words-data.js"></script>
+<script src="g-words.js"></script>
+<script src="g-snake.js"></script>
+<script src="g-memory.js"></script>
+<script src="g-connect4.js"></script>
 <script src="hub.js"></script>
 </body>
 </html>

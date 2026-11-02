@@ -1,7 +1,7 @@
 /* Service worker: keeps a copy of the Hub's own files on the phone so it opens offline.
    It only ever caches these files (the code). Your data lives in IndexedDB and is never sent anywhere. */
-const VERSION = 'hub-v2.1.0';           // bump this whenever you upload new files
-const FILES = ['./', './index.html', './styles.css', './core.js', './finance.js', './notes.js', './wallet.js', './hub.js', './manifest.json', './icon.png'];
+const VERSION = 'hub-v2.2.0';           // bump this whenever you upload new files
+const FILES = ['./', './index.html', './styles.css', './core.js', './finance.js', './notes.js', './wallet.js', './games.css', './games.js', './g-2048.js', './g-blocks.js', './g-sudoku.js', './g-mines.js', './g-words-data.js', './g-words.js', './g-snake.js', './g-memory.js', './g-connect4.js', './hub.js', './manifest.json', './icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
